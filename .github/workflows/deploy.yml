@@ -23,13 +23,21 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Create Artifact Registry repository
+        run: |
+          gcloud artifacts repositories create cloud-run-source-deploy \
+            --repository-format=docker \
+            --location=us-central1 \
+            --description="Cloud Run source deploy" \
+            || true
+
       - name: Build and push Docker image
-        run: gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME --suppress-logs
+        run: gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/$SERVICE_NAME --suppress-logs
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $SERVICE_NAME \
-            --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
+            --image us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/$SERVICE_NAME \
             --platform managed \
             --region $REGION \
             --allow-unauthenticated \
