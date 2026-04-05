@@ -19,26 +19,19 @@ app.config.from_mapping(cache_config)
 cache = Cache(app)
 
 def setup_keys():
-    """Load RSA keys from Secret Manager volume mounts or env vars (local dev fallback)."""
-    import shutil
+    """Read RSA keys from environment variables and write to keys/ directory."""
     os.makedirs('keys', exist_ok=True)
 
-    # Secret Manager volume mounts (Cloud Run production)
-    if os.path.exists('/secrets/private.key'):
-        shutil.copy('/secrets/private.key', 'keys/private.key')
-    else:
-        private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
-        if private_key:
-            with open('keys/private.key', 'w') as f:
-                f.write(private_key.replace('\\n', '\n'))
+    private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
+    public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
 
-    if os.path.exists('/secrets/public.key'):
-        shutil.copy('/secrets/public.key', 'keys/public.key')
-    else:
-        public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
-        if public_key:
-            with open('keys/public.key', 'w') as f:
-                f.write(public_key.replace('\\n', '\n'))
+    if private_key:
+        with open('keys/private.key', 'w') as f:
+            f.write(private_key.replace('\\n', '\n'))
+
+    if public_key:
+        with open('keys/public.key', 'w') as f:
+            f.write(public_key.replace('\\n', '\n'))
 
 setup_keys()
 
