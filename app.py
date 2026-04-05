@@ -1,7 +1,6 @@
 from flask import Flask, request, redirect, jsonify, session
 from flask_caching import Cache
-from pylti1p3.flask_adapter import FlaskMessageLaunch, FlaskOIDCLogin, FlaskRequest
-from pylti1p3.flask_adapter import FlaskCacheDataStorage
+from pylti1p3.contrib.flask import FlaskMessageLaunch, FlaskOIDCLogin, FlaskRequest, FlaskCacheDataStorage
 from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.deep_link_resource import DeepLinkResource
 import jwt
