@@ -32,7 +32,7 @@ jobs:
             || true
 
       - name: Build and push Docker image
-        run: gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/$SERVICE_NAME --suppress-logs
+        run: gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/$SERVICE_NAME --suppress-logs --service-account=sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com
 
       - name: Deploy to Cloud Run
         run: |
@@ -41,6 +41,7 @@ jobs:
             --platform managed \
             --region $REGION \
             --allow-unauthenticated \
+            --service-account=sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com \
             --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }} \
             --set-env-vars DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} \
             --set-env-vars SECRET_PRIVATE_KEY=${{ secrets.RSA_PRIVATE_KEY }} \
