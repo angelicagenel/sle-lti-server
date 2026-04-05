@@ -24,7 +24,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Build and push Docker image
-        run: gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME
+        run: gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME --suppress-logs
 
       - name: Deploy to Cloud Run
         run: |
