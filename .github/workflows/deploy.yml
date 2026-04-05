@@ -6,7 +6,7 @@ env:
   PROJECT_ID: sle-lti-server
   SERVICE_NAME: sle-lti-server
   REGION: us-central1
-  SA: sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com
+  SA_EMAIL: sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com
   IMAGE: us-central1-docker.pkg.dev/sle-lti-server/cloud-run-source-deploy/sle-lti-server
 
 jobs:
@@ -35,20 +35,11 @@ jobs:
         run: |
           gcloud builds submit \
             --tag $IMAGE \
-            --service-account=projects/sle-lti-server/serviceAccounts/sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com \
+            --service-account=projects/sle-lti-server/serviceAccounts/$SA_EMAIL \
             --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET
 
       - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy $SERVICE_NAME \
-            --image $IMAGE \
-            --platform managed \
-            --region $REGION \
-            --allow-unauthenticated \
-            --service-account=$SA \
-            --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }} \
-            --set-env-vars DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} \
-            --set-secrets /secrets/private.key=RSA_PRIVATE_KEY:latest,/secrets/public.key=RSA_PUBLIC_KEY:latest
+        run: gcloud run deploy $SERVICE_NAME --image $IMAGE --platform managed --region $REGION --allow-unauthenticated --service-account=$SA_EMAIL --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }},DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} --set-secrets SECRET_PRIVATE_KEY=RSA_PRIVATE_KEY:latest,SECRET_PUBLIC_KEY=RSA_PUBLIC_KEY:latest
 
       - name: Get service URL
         run: |
