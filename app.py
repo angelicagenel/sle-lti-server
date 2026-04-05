@@ -19,18 +19,18 @@ app.config.from_mapping(cache_config)
 cache = Cache(app)
 
 def setup_keys():
-    """Read RSA keys from environment variables and write to keys/ directory."""
-    os.makedirs('keys', exist_ok=True)
+    """Read RSA keys from environment variables and write to /app/keys/ directory."""
+    os.makedirs('/app/keys', exist_ok=True)
 
     private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
     public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
 
     if private_key:
-        with open('keys/private.key', 'w') as f:
+        with open('/app/keys/private.key', 'w') as f:
             f.write(private_key.replace('\\n', '\n'))
 
     if public_key:
-        with open('keys/public.key', 'w') as f:
+        with open('/app/keys/public.key', 'w') as f:
             f.write(public_key.replace('\\n', '\n'))
 
 setup_keys()

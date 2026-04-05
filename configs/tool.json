@@ -8,8 +8,8 @@
       "auth_audience": null,
       "key_set_url": "https://canvas.instructure.com/api/lti/security/jwks",
       "key_set": null,
-      "private_key_file": "keys/private.key",
-      "public_key_file": "keys/public.key",
+      "private_key_file": "/app/keys/private.key",
+      "public_key_file": "/app/keys/public.key",
       "deployment_ids": ["DEPLOYMENT_ID_AQUI"]
     }
   ]
