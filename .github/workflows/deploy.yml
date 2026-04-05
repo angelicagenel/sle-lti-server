@@ -35,7 +35,7 @@ jobs:
         run: |
           gcloud builds submit \
             --tag $IMAGE \
-            --service-account=$SA \
+            --service-account=projects/sle-lti-server/serviceAccounts/sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com \
             --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET
 
       - name: Deploy to Cloud Run
