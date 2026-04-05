@@ -48,8 +48,7 @@ jobs:
             --service-account=$SA \
             --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }} \
             --set-env-vars DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} \
-            --set-env-vars SECRET_PRIVATE_KEY=${{ secrets.RSA_PRIVATE_KEY }} \
-            --set-env-vars SECRET_PUBLIC_KEY=${{ secrets.RSA_PUBLIC_KEY }}
+            --set-secrets /secrets/private.key=RSA_PRIVATE_KEY:latest,/secrets/public.key=RSA_PUBLIC_KEY:latest
 
       - name: Get service URL
         run: |

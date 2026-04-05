@@ -19,21 +19,27 @@ cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
 app.config.from_mapping(cache_config)
 cache = Cache(app)
 
-# CORRECCIÓN 2: Escribir llaves RSA desde env vars a archivos temporales en runtime
 def setup_keys():
-    """Lee llaves RSA desde variables de entorno y las escribe temporalmente."""
+    """Load RSA keys from Secret Manager volume mounts or env vars (local dev fallback)."""
+    import shutil
     os.makedirs('keys', exist_ok=True)
 
-    private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
-    public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
+    # Secret Manager volume mounts (Cloud Run production)
+    if os.path.exists('/secrets/private.key'):
+        shutil.copy('/secrets/private.key', 'keys/private.key')
+    else:
+        private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
+        if private_key:
+            with open('keys/private.key', 'w') as f:
+                f.write(private_key.replace('\\n', '\n'))
 
-    if private_key:
-        with open('keys/private.key', 'w') as f:
-            f.write(private_key.replace('\\n', '\n'))
-
-    if public_key:
-        with open('keys/public.key', 'w') as f:
-            f.write(public_key.replace('\\n', '\n'))
+    if os.path.exists('/secrets/public.key'):
+        shutil.copy('/secrets/public.key', 'keys/public.key')
+    else:
+        public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
+        if public_key:
+            with open('keys/public.key', 'w') as f:
+                f.write(public_key.replace('\\n', '\n'))
 
 setup_keys()
 
