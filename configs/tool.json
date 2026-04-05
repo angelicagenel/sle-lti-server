@@ -1,0 +1,16 @@
+{
+  "https://canvas.instructure.com": [
+    {
+      "default": true,
+      "client_id": "CANVAS_CLIENT_ID_AQUI",
+      "auth_login_url": "https://canvas.instructure.com/api/lti/authorize_redirect",
+      "auth_token_url": "https://canvas.instructure.com/login/oauth2/token",
+      "auth_audience": null,
+      "key_set_url": "https://canvas.instructure.com/api/lti/security/jwks",
+      "key_set": null,
+      "private_key_file": "keys/private.key",
+      "public_key_file": "keys/public.key",
+      "deployment_ids": ["DEPLOYMENT_ID_AQUI"]
+    }
+  ]
+}

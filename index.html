@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SLE — Ejercicio: Verbo SER</title>
+  <style>
+    :root {
+      --coral: #ef7c8e;
+      --charcoal: #373f45;
+      --light: #fdf6f0;
+      --success: #4caf50;
+      --error: #e53935;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--light);
+      color: var(--charcoal);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(55,63,69,.10);
+      max-width: 560px;
+      width: 100%;
+      padding: 2.5rem 2rem;
+    }
+    .brand {
+      font-size: .8rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--coral);
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: .4rem;
+    }
+    .subtitle {
+      font-size: .95rem;
+      color: #666;
+      margin-bottom: 2rem;
+    }
+    .question {
+      background: #fdf0f2;
+      border-left: 4px solid var(--coral);
+      border-radius: 8px;
+      padding: 1rem 1.2rem;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+    }
+    .options { display: flex; flex-direction: column; gap: .75rem; }
+    .option-btn {
+      background: #fff;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: .85rem 1.2rem;
+      font-size: 1rem;
+      color: var(--charcoal);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color .2s, background .2s;
+    }
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--coral);
+      background: #fdf0f2;
+    }
+    .option-btn.correct {
+      border-color: var(--success);
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-weight: 600;
+    }
+    .option-btn.wrong {
+      border-color: var(--error);
+      background: #ffebee;
+      color: var(--error);
+    }
+    .option-btn:disabled { cursor: default; }
+    .feedback {
+      margin-top: 1.5rem;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      font-size: .95rem;
+      display: none;
+    }
+    .feedback.show { display: block; }
+    .feedback.success {
+      background: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #a5d6a7;
+    }
+    .feedback.error {
+      background: #ffebee;
+      color: var(--error);
+      border: 1px solid #ef9a9a;
+    }
+    .feedback.sending {
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #90caf9;
+    }
+    .score-badge {
+      display: inline-block;
+      background: var(--coral);
+      color: #fff;
+      border-radius: 20px;
+      padding: .2rem .8rem;
+      font-weight: 700;
+      font-size: .9rem;
+      margin-left: .4rem;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">Spanish Learning Edge</div>
+  <h1>Verbo SER — Presente</h1>
+  <p class="subtitle">Ejercicio de práctica · block: test-ser-01</p>
+
+  <div class="question">
+    Ella _____ estudiante de medicina en la Universidad de Texas.
+  </div>
+
+  <div class="options" id="options">
+    <button class="option-btn" onclick="check(this, false)">A) están</button>
+    <button class="option-btn" onclick="check(this, false)">B) somos</button>
+    <button class="option-btn" onclick="check(this, true)">C) es</button>
+    <button class="option-btn" onclick="check(this, false)">D) eres</button>
+  </div>
+
+  <div class="feedback" id="feedback"></div>
+</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const attemptId = params.get('attempt_id');
+  const token = params.get('token');
+
+  // Determine LTI server base URL from current page location or fallback
+  const LTI_SERVER = (() => {
+    // If running embedded via Canvas (same-site iframe), derive from meta tag or default
+    const meta = document.querySelector('meta[name="lti-server"]');
+    if (meta) return meta.content;
+    // Fallback: replace with your Cloud Run URL after deploy
+    return 'https://sle-lti-server-HASH-uc.a.run.app';
+  })();
+
+  function disableOptions() {
+    document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+  }
+
+  function showFeedback(type, html) {
+    const el = document.getElementById('feedback');
+    el.className = `feedback show ${type}`;
+    el.innerHTML = html;
+  }
+
+  async function check(btn, isCorrect) {
+    disableOptions();
+
+    if (!isCorrect) {
+      btn.classList.add('wrong');
+      showFeedback('error', '✗ Incorrecto. La respuesta correcta es <strong>C) es</strong> — tercera persona singular del verbo SER.');
+      return;
+    }
+
+    btn.classList.add('correct');
+
+    if (!attemptId || !token) {
+      showFeedback('success', '✓ ¡Correcto! <em>(Modo de vista previa — no hay sesión LTI activa.)</em>');
+      return;
+    }
+
+    showFeedback('sending', '⏳ Enviando calificación a Canvas…');
+
+    try {
+      const res = await fetch(`${LTI_SERVER}/api/grade`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attempt_id: attemptId,
+          token: token,
+          score: 1,
+          max_score: 1,
+          block_id: 'test-ser-01'
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const passback = data.passback === 'sent'
+          ? '✓ Calificación registrada en Canvas'
+          : `✓ Correcto (passback: ${data.passback})`;
+        showFeedback('success', `${passback} <span class="score-badge">1 / 1</span>`);
+      } else {
+        showFeedback('error', `✓ Respuesta correcta, pero hubo un error al enviar: ${data.error || res.status}`);
+      }
+    } catch (err) {
+      showFeedback('error', `✓ Correcto, pero no se pudo conectar al servidor LTI: ${err.message}`);
+    }
+  }
+</script>
+</body>
+</html>
