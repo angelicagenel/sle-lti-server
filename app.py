@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
 
-# CORRECCIÓN 1: Inicializar flask-caching explícitamente con SimpleCache
 cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
 app.config.from_mapping(cache_config)
 cache = Cache(app)
@@ -35,10 +34,8 @@ def setup_keys():
 
 setup_keys()
 
-# Tool config desde JSON
 tool_conf = ToolConfJsonFile('configs/tool.json')
 
-# Storage en memoria para MVP
 attempts = {}
 
 # ── LTI ENDPOINTS ──────────────────────────────────────────────────────
@@ -79,8 +76,8 @@ def launch():
         'https://purl.imsglobal.org/spec/lti/claim/custom', {}
     )
     workbook_url = custom_params.get('workbook_url', '')
-if not workbook_url or workbook_url.startswith('$'):
-    workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-workbooks.github.io/test')
+    if not workbook_url or workbook_url.startswith('$'):
+        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-workbooks.github.io/test')
 
     attempt_id = str(uuid.uuid4())
     token_payload = {
