@@ -1,16 +1,16 @@
 {
-  "https://canvas.instructure.com": [
+  "https://canvas.south.edu": [
     {
       "default": true,
-      "client_id": "CANVAS_CLIENT_ID_AQUI",
-      "auth_login_url": "https://canvas.instructure.com/api/lti/authorize_redirect",
-      "auth_token_url": "https://canvas.instructure.com/login/oauth2/token",
+      "client_id": "114610000000000314",
+      "auth_login_url": "https://canvas.south.edu/api/lti/authorize_redirect",
+      "auth_token_url": "https://canvas.south.edu/login/oauth2/token",
       "auth_audience": null,
-      "key_set_url": "https://canvas.instructure.com/api/lti/security/jwks",
+      "key_set_url": "https://canvas.south.edu/api/lti/security/jwks",
       "key_set": null,
       "private_key_file": "/app/keys/private.key",
       "public_key_file": "/app/keys/public.key",
-      "deployment_ids": ["DEPLOYMENT_ID_AQUI"]
+      "deployment_ids": ["23033:53d7caf1e17e9cf5ab62b838b7fcdc59406fcd4"]
     }
   ]
 }
