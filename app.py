@@ -1,5 +1,6 @@
 from flask import Flask, request, redirect, jsonify, session
 from flask_caching import Cache
+from flask_cors import CORS
 from pylti1p3.contrib.flask import FlaskMessageLaunch, FlaskOIDCLogin, FlaskRequest, FlaskCacheDataStorage
 from pylti1p3.tool_config import ToolConfJsonFile
 from pylti1p3.deep_link_resource import DeepLinkResource
@@ -11,6 +12,7 @@ import tempfile
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
 
 cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
