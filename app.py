@@ -78,8 +78,9 @@ def launch():
     custom_params = message_launch_data.get(
         'https://purl.imsglobal.org/spec/lti/claim/custom', {}
     )
-    workbook_url = custom_params.get('workbook_url',
-        os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-workbooks.github.io/test'))
+    workbook_url = custom_params.get('workbook_url', '')
+if not workbook_url or workbook_url.startswith('$'):
+    workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-workbooks.github.io/test')
 
     attempt_id = str(uuid.uuid4())
     token_payload = {
