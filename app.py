@@ -198,16 +198,17 @@ def receive_grade():
                 launch_id, flask_request, tool_conf,
                 launch_data_storage=launch_data_storage
             )
+            from pylti1p3.grade import Grade
+            from pylti1p3.lineitem import LineItem
             ags = message_launch.get_ags()
-            score_obj = {
-                "timestamp": datetime.utcnow().isoformat() + "Z",
-                "scoreGiven": score,
-                "scoreMaximum": max_score,
-                "activityProgress": "Completed",
-                "gradingProgress": "FullyGraded",
-                "userId": attempt['user_sub']
-            }
-            ags.put_grade(score_obj)
+            grade = Grade()
+            grade.set_score_given(score)
+            grade.set_score_maximum(max_score)
+            grade.set_timestamp(datetime.utcnow().isoformat() + "Z")
+            grade.set_activity_progress("Completed")
+            grade.set_grading_progress("FullyGraded")
+            grade.set_user_id(attempt['user_sub'])
+            ags.put_grade(grade))
             return jsonify({"success": True, "passback": "sent",
                            "score": score, "max_score": max_score, "block_id": block_id})
         except Exception as e:
