@@ -208,7 +208,7 @@ def receive_grade():
             grade.set_activity_progress("Completed")
             grade.set_grading_progress("FullyGraded")
             grade.set_user_id(attempt['user_sub'])
-            ags.put_grade(grade))
+            ags.put_grade(grade)
             return jsonify({"success": True, "passback": "sent",
                            "score": score, "max_score": max_score, "block_id": block_id})
         except Exception as e:
