@@ -144,6 +144,41 @@ def config():
             "workbook_url": "$ResourceLink.url"
         }
     }
+    return jsonify(config_data)    
+@app.route('/config/', methods=['GET'])
+def config():
+    base_url = 'https://sle-lti-server-950105557003.us-central1.run.app'
+    config_data = {
+        "title": "Spanish Learning Edge",
+        "description": "ACTFL-aligned Spanish courseware with grade passback",
+        "oidc_initiation_url": f"{base_url}/login/",
+        "target_link_uri": f"{base_url}/launch/",
+        "scopes": [
+            "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/score"
+        ],
+        "extensions": [
+            {
+                "platform": "canvas.instructure.com",
+                "settings": {
+                    "platform": "canvas.instructure.com",
+                    "placements": [
+                        {
+                            "placement": "assignment_selection",
+                            "message_type": "LtiResourceLinkRequest",
+                            "target_link_uri": f"{base_url}/launch/"
+                        }
+                    ]
+                },
+                "privacy_level": "public"
+            }
+        ],
+        "public_jwk_url": f"{base_url}/jwks/",
+        "custom_fields": {
+            "workbook_url": "$ResourceLink.url"
+        }
+    }
     return jsonify(config_data)
 
 @app.route('/')
