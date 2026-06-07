@@ -10,7 +10,7 @@
       "key_set": null,
       "private_key_file": "/app/keys/private.key",
       "public_key_file": "/app/keys/public.key",
-      "deployment_ids": ["23033:53d7caf1e17e9cf5ab62b838b7fcdc59406fcd4"]
+      "deployment_ids": ["23033:53d7caf1e17e9cf5ab62b838b7fcdc59406fccd4"]
     }
   ]
 }
