@@ -137,7 +137,7 @@ def config():
                         }
                     ]
                 },
-                "privacy_level": "public"
+                "privacy_level": "anonymous"
             }
         ],
         "public_jwk_url": f"{base_url}/jwks/",
