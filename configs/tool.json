@@ -1,4 +1,19 @@
 {
+  "https://blackboard.com": [
+    {
+      "default": true,
+      "issuer": "https://blackboard.com",
+      "client_id": "",
+      "auth_login_url": "https://developer.anthology.com/api/v1/gateway/oidcauth",
+      "auth_token_url": "https://developer.anthology.com/api/v1/gateway/oauth2/jwttoken",
+      "auth_audience": null,
+      "key_set_url": "https://developer.anthology.com/.well-known/jwks.json",
+      "key_set": null,
+      "private_key_file": "/app/keys/private.key",
+      "public_key_file": "/app/keys/public.key",
+      "deployment_ids": []
+    }
+  ],
   "https://canvas.instructure.com": [
     {
       "default": true,
