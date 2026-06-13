@@ -59,6 +59,15 @@ def launch():
     launch_data_storage = FlaskCacheDataStorage(cache)
     message_launch = FlaskMessageLaunch(flask_request, tool_conf,
                                         launch_data_storage=launch_data_storage)
+
+    if message_launch.is_deep_link_launch():
+        launch_id = message_launch.get_launch_id()
+        dashboard_url = os.environ.get(
+            'INSTRUCTOR_DASHBOARD_URL',
+            'https://sle-workbooks.github.io/instructor-dashboard.html'
+        )
+        return redirect(f"{dashboard_url}?deeplink_launch_id={launch_id}")
+
     message_launch_data = message_launch.get_launch_data()
 
     user_sub = message_launch_data.get('sub')
@@ -107,6 +116,38 @@ def launch():
     redirect_url = f"{workbook_url}?attempt_id={attempt_id}&token={token}"
     return redirect(redirect_url)
 
+@app.route('/deeplink/submit', methods=['POST'])
+def deeplink_submit():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+    launch_id = data.get('deeplink_launch_id')
+    assignments = data.get('assignments', [])
+    if not launch_id or not assignments:
+        return jsonify({"error": "Missing launch_id or assignments"}), 400
+    try:
+        flask_request = FlaskRequest()
+        launch_data_storage = FlaskCacheDataStorage(cache)
+        message_launch = FlaskMessageLaunch.from_cache(
+            launch_id, flask_request, tool_conf,
+            launch_data_storage=launch_data_storage
+        )
+        dl = message_launch.get_deep_link()
+        resources = []
+        for a in assignments:
+            nums = a.get('exercises', [])
+            label = a.get('label', '')
+            nums_str = ', '.join(str(n) for n in nums)
+            resource = DeepLinkResource()
+            resource.set_url(a['workbook_url'])
+            resource.set_title(f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}")
+            resources.append(resource)
+        form_html = dl.output_response_form(resources)
+        return jsonify({"form_html": form_html})
+    except Exception as e:
+        print(f"Deep link error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/jwks/', methods=['GET'])
 def jwks():
     return jsonify(tool_conf.get_jwks())
@@ -133,6 +174,11 @@ def config():
                         {
                             "placement": "assignment_selection",
                             "message_type": "LtiResourceLinkRequest",
+                            "target_link_uri": f"{base_url}/launch/"
+                        },
+                        {
+                            "placement": "assignment_selection",
+                            "message_type": "LtiDeepLinkingRequest",
                             "target_link_uri": f"{base_url}/launch/"
                         }
                     ]
