@@ -66,6 +66,7 @@ attempts = {}
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
+    print("=== /login/ called ===", flush=True)
     flask_request = FlaskRequest()
     target_link_uri = flask_request.get_param('target_link_uri')
     if not target_link_uri:
@@ -77,19 +78,36 @@ def login():
 
 @app.route('/launch/', methods=['POST'])
 def launch():
+    print("=== /launch/ called ===", flush=True)
     flask_request = FlaskRequest()
     launch_data_storage = FlaskCacheDataStorage(cache)
-    message_launch = FlaskMessageLaunch(flask_request, tool_conf,
-                                        launch_data_storage=launch_data_storage)
+    try:
+        message_launch = FlaskMessageLaunch(flask_request, tool_conf,
+                                            launch_data_storage=launch_data_storage)
+    except Exception as e:
+        print(f"[launch] FlaskMessageLaunch failed: {e}", flush=True)
+        return f"LTI launch error: {e}", 500
 
-    if message_launch.is_deep_link_launch():
+    is_dl = message_launch.is_deep_link_launch()
+    print(f"[launch] is_deep_link_launch={is_dl}", flush=True)
+
+    if is_dl:
         launch_id = message_launch.get_launch_id()
         dashboard_url = os.environ.get(
             'INSTRUCTOR_DASHBOARD_URL',
             'https://angelicagenel.github.io/AI-worksheets/instructor-dashboard.html'
         )
-        return redirect(f"{dashboard_url}?deeplink_launch_id={launch_id}")
+        target = f"{dashboard_url}?deeplink_launch_id={launch_id}"
+        print(f"[launch] deep link → redirecting to {target}", flush=True)
+        # Use JS redirect so Moodle's iframe navigates correctly even if
+        # the platform strips Location headers on cross-origin responses.
+        return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url={target}">
+<script>window.location.replace("{target}");</script>
+</head><body>Loading instructor dashboard…</body></html>"""
 
+    print("[launch] resource link launch – reading launch data", flush=True)
     message_launch_data = message_launch.get_launch_data()
 
     user_sub = message_launch_data.get('sub')
@@ -140,11 +158,13 @@ def launch():
 
 @app.route('/deeplink/submit', methods=['POST'])
 def deeplink_submit():
+    print("=== /deeplink/submit called ===", flush=True)
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON body"}), 400
     launch_id = data.get('deeplink_launch_id')
     assignments = data.get('assignments', [])
+    print(f"[deeplink/submit] launch_id={launch_id} assignments={len(assignments)}", flush=True)
     if not launch_id or not assignments:
         return jsonify({"error": "Missing launch_id or assignments"}), 400
     try:
@@ -165,9 +185,10 @@ def deeplink_submit():
             resource.set_title(f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}")
             resources.append(resource)
         form_html = dl.output_response_form(resources)
+        print(f"[deeplink/submit] form_html generated, length={len(form_html)}", flush=True)
         return jsonify({"form_html": form_html})
     except Exception as e:
-        print(f"Deep link error: {e}")
+        print(f"[deeplink/submit] error: {e}", flush=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/jwks/', methods=['GET'])
