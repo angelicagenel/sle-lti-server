@@ -64,8 +64,18 @@ def build_tool_conf():
         return value
 
     resolved = resolve(raw)
+
+    # Drop platform entries whose client_id resolved to an empty string.
+    # This prevents PyLTI1p3 from failing with "missing client_id" when
+    # optional integrations (Canvas, Blackboard) have no env vars set.
+    filtered = {
+        platform: [entry for entry in entries if entry.get('client_id')]
+        for platform, entries in resolved.items()
+    }
+    filtered = {k: v for k, v in filtered.items() if v}
+
     tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
-    json.dump(resolved, tmp)
+    json.dump(filtered, tmp)
     tmp.flush()
     print(f"[startup] tool config written to {tmp.name}", flush=True)
     conf = ToolConfJsonFile(tmp.name)
