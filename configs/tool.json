@@ -3,7 +3,7 @@
     {
       "default": true,
       "issuer": "https://blackboard.com",
-      "client_id": "",
+      "client_id": "b3f0e762-4bf5-4772-bc62-560d86151dda",
       "auth_login_url": "https://developer.anthology.com/api/v1/gateway/oidcauth",
       "auth_token_url": "https://developer.anthology.com/api/v1/gateway/oauth2/jwttoken",
       "auth_audience": null,
