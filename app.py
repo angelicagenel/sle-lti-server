@@ -1,28 +1,39 @@
 from flask import Flask, request, redirect, jsonify, session
-from flask_caching import Cache
-from flask_cors import CORS
-from pylti1p3.contrib.flask import FlaskMessageLaunch, FlaskOIDCLogin, FlaskRequest, FlaskCacheDataStorage
-from pylti1p3.tool_config import ToolConfJsonFile
-from pylti1p3.deep_link_resource import DeepLinkResource
-import jwt
-import uuid
-import json
-import os
-import tempfile
+import os, json, uuid, tempfile
 from datetime import datetime, timedelta
 
+# Minimal app so /ping is always reachable even if LTI imports fail
 app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*":      {"origins": "*"},
-    r"/deeplink/*": {"origins": "https://angelicagenel.github.io"},
-})
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
 
-cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
-app.config.from_mapping(cache_config)
-cache = Cache(app)
+@app.route('/ping')
+def ping():
+    return 'pong', 200
 
-STARTUP_ERROR = None
+# LTI and optional imports — errors are caught below
+_import_error = None
+try:
+    from flask_caching import Cache
+    from flask_cors import CORS
+    from pylti1p3.contrib.flask import FlaskMessageLaunch, FlaskOIDCLogin, FlaskRequest, FlaskCacheDataStorage
+    from pylti1p3.tool_config import ToolConfJsonFile
+    from pylti1p3.deep_link_resource import DeepLinkResource
+    import jwt
+    print("[startup] all imports OK", flush=True)
+except Exception as _e:
+    _import_error = str(_e)
+    print(f"[startup] IMPORT ERROR: {_import_error}", flush=True)
+
+if not _import_error:
+    CORS(app, resources={
+        r"/api/*":      {"origins": "*"},
+        r"/deeplink/*": {"origins": "https://angelicagenel.github.io"},
+    })
+    cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
+    app.config.from_mapping(cache_config)
+    cache = Cache(app)
+
+STARTUP_ERROR = _import_error
 
 def setup_keys():
     os.makedirs('/app/keys', exist_ok=True)
@@ -61,14 +72,15 @@ def build_tool_conf():
     print("[startup] ToolConfJsonFile loaded OK", flush=True)
     return conf
 
-try:
-    setup_keys()
-    tool_conf = build_tool_conf()
-    print("[startup] startup complete — tool_conf ready", flush=True)
-except Exception as _startup_exc:
-    STARTUP_ERROR = str(_startup_exc)
-    tool_conf = None
-    print(f"[startup] FATAL STARTUP ERROR: {STARTUP_ERROR}", flush=True)
+tool_conf = None
+if not STARTUP_ERROR:
+    try:
+        setup_keys()
+        tool_conf = build_tool_conf()
+        print("[startup] startup complete — tool_conf ready", flush=True)
+    except Exception as _startup_exc:
+        STARTUP_ERROR = str(_startup_exc)
+        print(f"[startup] FATAL STARTUP ERROR: {STARTUP_ERROR}", flush=True)
 
 attempts = {}
 
