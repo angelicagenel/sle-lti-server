@@ -62,7 +62,7 @@ tool_conf = build_tool_conf()
 
 attempts = {}
 
-# ── LTI ENDPOINTS ──────────────────────────────────────────────────────
+# ── LTI ENDPOINTS ───────────────────────────────────────────────────────
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
@@ -262,7 +262,7 @@ def config_canvas():
 def health():
     return jsonify({"status": "ok", "service": "SLE LTI 1.3", "version": "1.0.0"})
 
-# ── SLE API ─────────────────────────────────────────────────────────────
+# ── SLE API ────────────────────────────────────────────────────────────
 
 @app.route('/api/grade', methods=['POST'])
 def receive_grade():
