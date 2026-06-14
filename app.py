@@ -22,22 +22,22 @@ cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
 app.config.from_mapping(cache_config)
 cache = Cache(app)
 
-def setup_keys():
-    """Read RSA keys from environment variables and write to /app/keys/ directory."""
-    os.makedirs('/app/keys', exist_ok=True)
+STARTUP_ERROR = None
 
+def setup_keys():
+    os.makedirs('/app/keys', exist_ok=True)
     private_key = os.environ.get('SECRET_PRIVATE_KEY', '')
     public_key = os.environ.get('SECRET_PUBLIC_KEY', '')
-
+    print(f"[startup] SECRET_PRIVATE_KEY present={bool(private_key)} len={len(private_key)}", flush=True)
+    print(f"[startup] SECRET_PUBLIC_KEY  present={bool(public_key)}  len={len(public_key)}", flush=True)
     if private_key:
         with open('/app/keys/private.key', 'w') as f:
             f.write(private_key.replace('\\n', '\n'))
-
+        print("[startup] private.key written", flush=True)
     if public_key:
         with open('/app/keys/public.key', 'w') as f:
             f.write(public_key.replace('\\n', '\n'))
-
-setup_keys()
+        print("[startup] public.key written", flush=True)
 
 def build_tool_conf():
     with open('configs/tool.json') as f:
@@ -56,9 +56,19 @@ def build_tool_conf():
     tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
     json.dump(resolved, tmp)
     tmp.flush()
-    return ToolConfJsonFile(tmp.name)
+    print(f"[startup] tool config written to {tmp.name}", flush=True)
+    conf = ToolConfJsonFile(tmp.name)
+    print("[startup] ToolConfJsonFile loaded OK", flush=True)
+    return conf
 
-tool_conf = build_tool_conf()
+try:
+    setup_keys()
+    tool_conf = build_tool_conf()
+    print("[startup] startup complete — tool_conf ready", flush=True)
+except Exception as _startup_exc:
+    STARTUP_ERROR = str(_startup_exc)
+    tool_conf = None
+    print(f"[startup] FATAL STARTUP ERROR: {STARTUP_ERROR}", flush=True)
 
 attempts = {}
 
@@ -67,6 +77,8 @@ attempts = {}
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
     print("=== /login/ called ===", flush=True)
+    if STARTUP_ERROR:
+        return f"LTI server startup error: {STARTUP_ERROR}", 500
     flask_request = FlaskRequest()
     target_link_uri = flask_request.get_param('target_link_uri')
     if not target_link_uri:
@@ -79,6 +91,8 @@ def login():
 @app.route('/launch/', methods=['POST'])
 def launch():
     print("=== /launch/ called ===", flush=True)
+    if STARTUP_ERROR:
+        return f"LTI server startup error: {STARTUP_ERROR}", 500
     flask_request = FlaskRequest()
     launch_data_storage = FlaskCacheDataStorage(cache)
     try:
@@ -281,6 +295,8 @@ def config_canvas():
 
 @app.route('/')
 def health():
+    if STARTUP_ERROR:
+        return jsonify({"status": "error", "startup_error": STARTUP_ERROR}), 500
     return jsonify({"status": "ok", "service": "SLE LTI 1.3", "version": "1.0.0"})
 
 # ── SLE API ────────────────────────────────────────────────────────────
@@ -353,6 +369,12 @@ def receive_grade():
 
 @app.route('/api/health', methods=['GET'])
 def api_health():
+    if STARTUP_ERROR:
+        return jsonify({
+            "status": "error",
+            "startup_error": STARTUP_ERROR,
+            "timestamp": datetime.utcnow().isoformat()
+        }), 500
     return jsonify({
         "status": "ok",
         "attempts_in_memory": len(attempts),
