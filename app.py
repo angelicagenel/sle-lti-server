@@ -193,7 +193,8 @@ def launch():
         'max_score': None
     }
 
-    redirect_url = f"{workbook_url}?attempt_id={attempt_id}&token={token}"
+    separator = '&' if '?' in workbook_url else '?'
+    redirect_url = f"{workbook_url}{separator}attempt_id={attempt_id}&token={token}"
     return redirect(redirect_url)
 
 @app.route('/deeplink/submit', methods=['POST'])
@@ -216,12 +217,17 @@ def deeplink_submit():
         )
         dl = message_launch.get_deep_link()
         resources = []
+        lti_launch_url = os.environ.get(
+            'LTI_LAUNCH_URL',
+            'https://sle-lti-server-950105557003.us-central1.run.app/launch/'
+        )
         for a in assignments:
             nums = a.get('exercises', [])
             label = a.get('label', '')
             nums_str = ', '.join(str(n) for n in nums)
             resource = DeepLinkResource()
-            resource.set_url(a['workbook_url'])
+            resource.set_url(lti_launch_url)
+            resource.set_custom_params({'workbook_url': a['workbook_url']})
             resource.set_title(f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}")
             resources.append(resource)
         form_html = dl.output_response_form(resources)
