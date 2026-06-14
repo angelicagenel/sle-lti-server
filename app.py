@@ -86,7 +86,7 @@ def launch():
         launch_id = message_launch.get_launch_id()
         dashboard_url = os.environ.get(
             'INSTRUCTOR_DASHBOARD_URL',
-            'https://sle-workbooks.github.io/instructor-dashboard.html'
+            'https://angelicagenel.github.io/AI-worksheets/instructor-dashboard.html'
         )
         return redirect(f"{dashboard_url}?deeplink_launch_id={launch_id}")
 
