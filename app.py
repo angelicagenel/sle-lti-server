@@ -12,7 +12,10 @@ import tempfile
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app, resources={
+    r"/api/*":      {"origins": "*"},
+    r"/deeplink/*": {"origins": "https://angelicagenel.github.io"},
+})
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-secret-change-in-production')
 
 cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 7200}
@@ -36,11 +39,30 @@ def setup_keys():
 
 setup_keys()
 
-tool_conf = ToolConfJsonFile('configs/tool.json')
+def build_tool_conf():
+    with open('configs/tool.json') as f:
+        raw = json.load(f)
+
+    def resolve(value):
+        if isinstance(value, str) and value.startswith('ENV:'):
+            return os.environ.get(value[4:], '')
+        if isinstance(value, list):
+            return [resolve(v) for v in value]
+        if isinstance(value, dict):
+            return {k: resolve(v) for k, v in value.items()}
+        return value
+
+    resolved = resolve(raw)
+    tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+    json.dump(resolved, tmp)
+    tmp.flush()
+    return ToolConfJsonFile(tmp.name)
+
+tool_conf = build_tool_conf()
 
 attempts = {}
 
-# ── LTI ENDPOINTS ──────────────────────────────────────────────────────
+# ── LTI ENDPOINTS ───────────────────────────────────────────────────────
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
@@ -193,11 +215,54 @@ def config():
     }
     return jsonify(config_data)
 
+@app.route('/config/canvas', methods=['GET'])
+def config_canvas():
+    base_url = 'https://sle-lti-server-950105557003.us-central1.run.app'
+    config_data = {
+        "title": "Spanish Learning Edge",
+        "description": "ACTFL-aligned Spanish courseware with grade passback",
+        "oidc_initiation_url": f"{base_url}/login/",
+        "target_link_uri": f"{base_url}/launch/",
+        "scopes": [
+            "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/score"
+        ],
+        "extensions": [
+            {
+                "platform": "canvas.instructure.com",
+                "settings": {
+                    "platform": "canvas.instructure.com",
+                    "placements": [
+                        {
+                            "placement": "assignment_selection",
+                            "message_type": "LtiResourceLinkRequest",
+                            "target_link_uri": f"{base_url}/launch/"
+                        },
+                        {
+                            "placement": "assignment_selection",
+                            "message_type": "LtiDeepLinkingRequest",
+                            "target_link_uri": f"{base_url}/launch/"
+                        }
+                    ]
+                },
+                "privacy_level": "anonymous"
+            }
+        ],
+        "public_jwk_url": f"{base_url}/jwks/",
+        "custom_fields": {
+            "workbook_url": "$ResourceLink.url"
+        },
+        "client_id": os.environ.get('CANVAS_CLIENT_ID', ''),
+        "deployment_id": os.environ.get('CANVAS_DEPLOYMENT_ID', '')
+    }
+    return jsonify(config_data)
+
 @app.route('/')
 def health():
     return jsonify({"status": "ok", "service": "SLE LTI 1.3", "version": "1.0.0"})
 
-# ── SLE API ─────────────────────────────────────────────────────────────
+# ── SLE API ────────────────────────────────────────────────────────────
 
 @app.route('/api/grade', methods=['POST'])
 def receive_grade():
