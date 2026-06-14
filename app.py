@@ -124,6 +124,10 @@ def launch():
         print(f"[launch] FlaskMessageLaunch failed: {e}", flush=True)
         return f"LTI launch error: {e}", 500
 
+    launch_data = message_launch.get_launch_data()
+    message_type = launch_data.get('https://purl.imsglobal.org/spec/lti/claim/message_type', 'MISSING')
+    print(f"[launch] message_type={message_type}", flush=True)
+
     is_dl = message_launch.is_deep_link_launch()
     print(f"[launch] is_deep_link_launch={is_dl}", flush=True)
 
@@ -164,7 +168,7 @@ def launch():
     )
     workbook_url = custom_params.get('workbook_url', '')
     if not workbook_url or workbook_url.startswith('$'):
-        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-workbooks.github.io/test')
+        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://angelicagenel.github.io/AI-worksheets/Workbook%20SPN%2001/Grammar/l01-mucho-gusto-workbook.html')
 
     attempt_id = str(uuid.uuid4())
     token_payload = {
