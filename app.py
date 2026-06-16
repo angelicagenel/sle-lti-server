@@ -108,7 +108,7 @@ def login():
     launch_data_storage = FlaskCacheDataStorage(cache)
     oidc_login = FlaskOIDCLogin(flask_request, tool_conf,
                                 launch_data_storage=launch_data_storage)
-    return oidc_login.enable_check_cookies().redirect(target_link_uri)
+    return oidc_login.redirect(target_link_uri)
 
 @app.route('/launch/', methods=['POST'])
 def launch():
