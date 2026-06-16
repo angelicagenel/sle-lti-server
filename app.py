@@ -33,6 +33,61 @@ if not _import_error:
     app.config.from_mapping(cache_config)
     cache = Cache(app)
 
+    class CookieFreeStorage:
+        """
+        LTI state storage that avoids session cookies.
+        Moodle's iframe blocks third-party cookies, so we cannot rely on
+        Flask's session cookie to round-trip the OIDC state.  Instead we
+        save the state value in the server-side cache keyed by a nonce we
+        generate ourselves, and during /launch/ we fall back to reading the
+        'state' param that Moodle POSTs back in the form body.
+        """
+        def __init__(self, cache_obj):
+            self._cache = cache_obj
+            self._session_cookie_name = None
+
+        def can_set_keys_expiration(self):
+            return True
+
+        def get_session_cookie_name(self):
+            return self._session_cookie_name
+
+        def set_session_cookie_name(self, name):
+            self._session_cookie_name = name
+
+        def save_state_in_session(self, state):
+            # Also keep state → state mapping so launch can find it via POST param
+            if self._session_cookie_name:
+                self._cache.set(
+                    f'_sle_sess_{self._session_cookie_name}', state, timeout=3600
+                )
+
+        def get_state_from_session(self):
+            from flask import request as flask_req
+            # 1. Try our cache-backed session first
+            if self._session_cookie_name:
+                val = self._cache.get(f'_sle_sess_{self._session_cookie_name}')
+                if val:
+                    return val
+            # 2. Fall back: read 'state' directly from the POST/GET params.
+            #    Moodle always sends the state value back in the launch POST.
+            state = (flask_req.form.get('state')
+                     or flask_req.args.get('state'))
+            print(f"[storage] get_state_from_session fallback state={state}", flush=True)
+            return state
+
+        def get_launch_data(self, key):
+            return self._cache.get(key)
+
+        def save_launch_data(self, key, jwt_body):
+            self._cache.set(key, jwt_body, timeout=3600)
+
+        def save_nonce(self, nonce):
+            self._cache.set('lti1p3-nonce-' + nonce, True, timeout=3600)
+
+        def check_nonce(self, nonce):
+            return self._cache.get('lti1p3-nonce-' + nonce)
+
 STARTUP_ERROR = _import_error
 
 def setup_keys():
@@ -106,7 +161,7 @@ def login():
         target_link_uri = flask_request.get_param('target_link_uri')
         if not target_link_uri:
             raise Exception('Missing target_link_uri')
-        launch_data_storage = FlaskCacheDataStorage(cache)
+        launch_data_storage = CookieFreeStorage(cache)
         oidc_login = FlaskOIDCLogin(flask_request, tool_conf,
                                     launch_data_storage=launch_data_storage)
         return oidc_login.redirect(target_link_uri)
@@ -120,7 +175,7 @@ def launch():
     if STARTUP_ERROR:
         return f"LTI server startup error: {STARTUP_ERROR}", 500
     flask_request = FlaskRequest()
-    launch_data_storage = FlaskCacheDataStorage(cache)
+    launch_data_storage = CookieFreeStorage(cache)
     try:
         message_launch = FlaskMessageLaunch(flask_request, tool_conf,
                                             launch_data_storage=launch_data_storage)
@@ -214,7 +269,7 @@ def deeplink_submit():
         return jsonify({"error": "Missing launch_id or assignments"}), 400
     try:
         flask_request = FlaskRequest()
-        launch_data_storage = FlaskCacheDataStorage(cache)
+        launch_data_storage = CookieFreeStorage(cache)
         message_launch = FlaskMessageLaunch.from_cache(
             launch_id, flask_request, tool_conf,
             launch_data_storage=launch_data_storage
@@ -407,7 +462,7 @@ def receive_grade():
         try:
             launch_id = attempt.get('launch_id')
             flask_request = FlaskRequest()
-            launch_data_storage = FlaskCacheDataStorage(cache)
+            launch_data_storage = CookieFreeStorage(cache)
             message_launch = FlaskMessageLaunch.from_cache(
                 launch_id, flask_request, tool_conf,
                 launch_data_storage=launch_data_storage
