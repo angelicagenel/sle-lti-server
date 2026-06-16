@@ -101,14 +101,18 @@ def login():
     print("=== /login/ called ===", flush=True)
     if STARTUP_ERROR:
         return f"LTI server startup error: {STARTUP_ERROR}", 500
-    flask_request = FlaskRequest()
-    target_link_uri = flask_request.get_param('target_link_uri')
-    if not target_link_uri:
-        raise Exception('Missing target_link_uri')
-    launch_data_storage = FlaskCacheDataStorage(cache)
-    oidc_login = FlaskOIDCLogin(flask_request, tool_conf,
-                                launch_data_storage=launch_data_storage)
-    return oidc_login.redirect(target_link_uri)
+    try:
+        flask_request = FlaskRequest()
+        target_link_uri = flask_request.get_param('target_link_uri')
+        if not target_link_uri:
+            raise Exception('Missing target_link_uri')
+        launch_data_storage = FlaskCacheDataStorage(cache)
+        oidc_login = FlaskOIDCLogin(flask_request, tool_conf,
+                                    launch_data_storage=launch_data_storage)
+        return oidc_login.redirect(target_link_uri)
+    except Exception as e:
+        print(f"[login] ERROR: {e}", flush=True)
+        return f"<pre>LTI login error: {e}</pre>", 500
 
 @app.route('/launch/', methods=['POST'])
 def launch():
