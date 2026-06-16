@@ -168,7 +168,7 @@ def launch():
     )
     workbook_url = custom_params.get('workbook_url', '')
     if not workbook_url or workbook_url.startswith('$'):
-        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://angelicagenel.github.io/AI-worksheets/Workbook%20SPN%2001/Grammar/l01-mucho-gusto-workbook.html')
+        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-lti-server-950105557003.us-central1.run.app/no-assignment/')
 
     attempt_id = str(uuid.uuid4())
     token_payload = {
@@ -324,6 +324,36 @@ def config_canvas():
         "deployment_id": os.environ.get('CANVAS_DEPLOYMENT_ID', '')
     }
     return jsonify(config_data)
+
+@app.route('/no-assignment/')
+def no_assignment():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Not Configured · Spanish Learning Edge</title>
+<style>
+  body { font-family: sans-serif; display: flex; align-items: center;
+         justify-content: center; min-height: 100vh; margin: 0;
+         background: #f0f3f3; }
+  .box { background: #fff; border-radius: 12px; padding: 40px 48px;
+         text-align: center; max-width: 420px;
+         box-shadow: 0 2px 12px rgba(0,0,0,.08); }
+  .icon { font-size: 2.5rem; margin-bottom: 16px; }
+  h1 { font-size: 1.1rem; color: #2f3437; margin-bottom: 10px; }
+  p  { font-size: .9rem; color: #5a6470; line-height: 1.6; margin: 0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="icon">📋</div>
+  <h1>No assignment configured</h1>
+  <p>Your instructor hasn't set up this activity yet.<br>
+     Please check back later or contact your instructor.</p>
+</div>
+</body>
+</html>""", 200
 
 @app.route('/')
 def health():
