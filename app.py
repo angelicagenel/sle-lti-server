@@ -55,6 +55,9 @@ if not _import_error:
         def set_session_cookie_name(self, name):
             self._session_cookie_name = name
 
+        def set_request(self, request):
+            self._request = request
+
         def save_state_in_session(self, state):
             # Also keep state → state mapping so launch can find it via POST param
             if self._session_cookie_name:
