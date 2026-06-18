@@ -309,10 +309,17 @@ def deeplink_submit():
             nums = a.get('exercises', [])
             label = a.get('label', '')
             nums_str = ', '.join(str(n) for n in nums)
+            title = f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}"
             resource = DeepLinkResource()
             resource.set_url(lti_launch_url)
             resource.set_custom_params({'workbook_url': a['workbook_url']})
-            resource.set_title(f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}")
+            resource.set_title(title)
+            from pylti1p3.lineitem import LineItem
+            lineitem = LineItem()
+            lineitem.set_score_maximum(100)
+            lineitem.set_label(title)
+            lineitem.set_resource_id(f"sle-{label.lower().replace(' ', '-')}")
+            resource.set_lineitem(lineitem)
             resources.append(resource)
         form_html = dl.output_response_form(resources)
         print(f"[deeplink/submit] form_html generated, length={len(form_html)}", flush=True)
