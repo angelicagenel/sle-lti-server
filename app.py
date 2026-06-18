@@ -483,9 +483,11 @@ def receive_grade():
     attempts[attempt_id]['max_score'] = max_score
 
     lineitem_url = attempt.get('lineitem_url')
+    print(f"[grade] attempt_id={attempt_id} score={score}/{max_score} lineitem_url={lineitem_url}", flush=True)
     if lineitem_url:
         try:
             launch_id = attempt.get('launch_id')
+            print(f"[grade] restoring launch_id={launch_id}", flush=True)
             flask_request = FlaskRequest()
             launch_data_storage = NoCookieStorage(cache)
             message_launch = FlaskMessageLaunch.from_cache(
@@ -503,13 +505,15 @@ def receive_grade():
             grade.set_grading_progress("FullyGraded")
             grade.set_user_id(attempt['user_sub'])
             ags.put_grade(grade)
+            print(f"[grade] AGS passback SUCCESS score={score}/{max_score}", flush=True)
             return jsonify({"success": True, "passback": "sent",
                            "score": score, "max_score": max_score, "block_id": block_id})
         except Exception as e:
-            print(f"AGS error: {e}")
+            print(f"[grade] AGS ERROR: {e}", flush=True)
             return jsonify({"success": True, "passback": "failed",
                            "error": str(e), "score": score}), 207
     else:
+        print(f"[grade] no lineitem_url — skipping passback", flush=True)
         return jsonify({"success": True, "passback": "no_lineitem",
                        "score": score, "max_score": max_score, "block_id": block_id})
 
