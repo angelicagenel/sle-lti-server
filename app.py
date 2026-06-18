@@ -243,9 +243,15 @@ def launch():
     ).get('id')
 
     lineitem_url = None
-    if message_launch.has_ags():
+    has_ags = message_launch.has_ags()
+    print(f"[launch] has_ags={has_ags}", flush=True)
+    if has_ags:
         ags = message_launch.get_ags()
         lineitem_url = ags.get_lineitem()
+        print(f"[launch] lineitem_url={lineitem_url}", flush=True)
+    else:
+        ags_claim = message_launch_data.get('https://purl.imsglobal.org/spec/lti-ags/claim/endpoint')
+        print(f"[launch] AGS claim from JWT={ags_claim}", flush=True)
 
     custom_params = message_launch_data.get(
         'https://purl.imsglobal.org/spec/lti/claim/custom', {}
