@@ -3,11 +3,12 @@ on:
   push:
     branches: [main]
 env:
-  PROJECT_ID: sle-lti-server
+  PROJECT_ID: sle-lti-staging
   SERVICE_NAME: sle-lti-server
   REGION: us-central1
-  SA_EMAIL: sle-lti-service-for-claude@sle-lti-server.iam.gserviceaccount.com
-  IMAGE: us-central1-docker.pkg.dev/sle-lti-server/cloud-run-source-deploy/sle-lti-server
+  DEPLOY_SA: sle-lti-staging-deploy@sle-lti-staging.iam.gserviceaccount.com
+  RUNTIME_SA: sle-lti-staging-runtime@sle-lti-staging.iam.gserviceaccount.com
+  IMAGE: us-central1-docker.pkg.dev/sle-lti-staging/cloud-run-source-deploy/sle-lti-server
 
 jobs:
   deploy:
@@ -35,11 +36,11 @@ jobs:
         run: |
           gcloud builds submit \
             --tag $IMAGE \
-            --service-account=projects/sle-lti-server/serviceAccounts/$SA_EMAIL \
+            --service-account=projects/$PROJECT_ID/serviceAccounts/$DEPLOY_SA \
             --default-buckets-behavior=REGIONAL_USER_OWNED_BUCKET
 
       - name: Deploy to Cloud Run
-        run: gcloud run deploy $SERVICE_NAME --image $IMAGE --platform managed --region $REGION --allow-unauthenticated --service-account=$SA_EMAIL --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }},DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} --set-secrets SECRET_PRIVATE_KEY=RSA_PRIVATE_KEY:latest,SECRET_PUBLIC_KEY=RSA_PUBLIC_KEY:latest
+        run: gcloud run deploy $SERVICE_NAME --image $IMAGE --platform managed --region $REGION --allow-unauthenticated --service-account=$RUNTIME_SA --set-env-vars FLASK_SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }},DEFAULT_WORKBOOK_URL=${{ secrets.DEFAULT_WORKBOOK_URL }} --set-secrets SECRET_PRIVATE_KEY=RSA_PRIVATE_KEY:latest,SECRET_PUBLIC_KEY=RSA_PUBLIC_KEY:latest
 
       - name: Get service URL
         run: |
