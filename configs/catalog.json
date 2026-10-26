@@ -1,0 +1,23 @@
+{
+  "SP101-U01-L01-WB-GRAMMAR@1": {
+    "title": "SPN 101 Unit 1 Lesson 1 — Grammar",
+    "workbook_url": "https://angelicagenel.github.io/AI-worksheets/Workbook%20SPN%2001/Grammar/l01-mucho-gusto-workbook.html",
+    "max_score_per_exercise": 5,
+    "exercise_count": 10,
+    "max_score_total": 50
+  },
+  "SP101-U01-L01-WB-VOCABULARY@1": {
+    "title": "SPN 101 Unit 1 Lesson 1 — Vocabulary",
+    "workbook_url": "https://angelicagenel.github.io/AI-worksheets/Workbook%20SPN%2001/Vocabulary/l01-vocabulario-workbook.html",
+    "max_score_per_exercise": 5,
+    "exercise_count": 5,
+    "max_score_total": 25
+  },
+  "SP101-U01-L01-WB-LISTENING@1": {
+    "title": "SPN 101 Unit 1 Lesson 1 — Listening",
+    "workbook_url": "https://angelicagenel.github.io/AI-worksheets/Workbook%20SPN%2001/Listening/l01-listening-workbook.html",
+    "max_score_per_exercise": 5,
+    "exercise_count": 5,
+    "max_score_total": 25
+  }
+}

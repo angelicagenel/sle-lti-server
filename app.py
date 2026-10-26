@@ -168,9 +168,82 @@ if not STARTUP_ERROR:
         STARTUP_ERROR = str(_startup_exc)
         print(f"[startup] FATAL STARTUP ERROR: {STARTUP_ERROR}", flush=True)
 
-attempts = {}
+# ── Catalog ──────────────────────────────────────────────────────────────
+# Maps catalog_version_id → workbook metadata. Add new workbook versions here.
+# The client sends only the catalog_version_id; the server resolves the URL,
+# so the client can never point an assignment at an unauthorized workbook.
+def load_catalog():
+    try:
+        with open('configs/catalog.json') as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[catalog] failed to load: {e}", flush=True)
+        return {}
 
-# ── LTI ENDPOINTS ───────────────────────────────────────────────────────
+CATALOG = load_catalog()
+print(f"[startup] catalog loaded, {len(CATALOG)} entries", flush=True)
+
+# ── Firestore attempts store ──────────────────────────────────────────────
+# Attempts are stored in Cloud Firestore so they survive container restarts.
+# Falls back to an in-memory dict if Firestore is unavailable (e.g. local dev).
+_fs_client = None
+_fs_error = None
+
+def get_firestore():
+    global _fs_client, _fs_error
+    if _fs_client is not None:
+        return _fs_client
+    if _fs_error:
+        return None
+    try:
+        from google.cloud import firestore
+        _fs_client = firestore.Client()
+        print("[firestore] client initialized", flush=True)
+        return _fs_client
+    except Exception as e:
+        _fs_error = str(e)
+        print(f"[firestore] INIT ERROR: {e} — falling back to in-memory store", flush=True)
+        return None
+
+_mem_attempts = {}  # in-memory fallback only
+
+def save_attempt(attempt_id, data):
+    fs = get_firestore()
+    if fs:
+        try:
+            fs.collection('attempts').document(attempt_id).set(data)
+            return
+        except Exception as e:
+            print(f"[firestore] write error: {e} — using memory fallback", flush=True)
+    _mem_attempts[attempt_id] = data
+
+def get_attempt(attempt_id):
+    fs = get_firestore()
+    if fs:
+        try:
+            doc = fs.collection('attempts').document(attempt_id).get()
+            return doc.to_dict() if doc.exists else None
+        except Exception as e:
+            print(f"[firestore] read error: {e} — checking memory fallback", flush=True)
+    return _mem_attempts.get(attempt_id)
+
+def mark_attempt_used(attempt_id, score, max_score):
+    fs = get_firestore()
+    if fs:
+        try:
+            fs.collection('attempts').document(attempt_id).update({
+                'used': True,
+                'score': score,
+                'max_score': max_score,
+                'submitted_at': datetime.utcnow().isoformat()
+            })
+            return
+        except Exception as e:
+            print(f"[firestore] update error: {e} — updating memory fallback", flush=True)
+    if attempt_id in _mem_attempts:
+        _mem_attempts[attempt_id].update({'used': True, 'score': score, 'max_score': max_score})
+
+# ── LTI ENDPOINTS ────────────────────────────────────────────────────────
 
 @app.route('/login/', methods=['GET', 'POST'])
 def login():
@@ -221,7 +294,15 @@ def launch():
             'INSTRUCTOR_DASHBOARD_URL',
             'https://angelicagenel.github.io/AI-worksheets/instructor-dashboard.html'
         )
-        target = f"{dashboard_url}?deeplink_launch_id={launch_id}"
+        base_url = os.environ.get(
+            'SERVER_BASE_URL',
+            'https://sle-lti-server-950105557003.us-central1.run.app'
+        )
+        target = (
+            f"{dashboard_url}"
+            f"?deeplink_launch_id={launch_id}"
+            f"&deeplink_submit_url={base_url}/deeplink/submit"
+        )
         print(f"[launch] deep link → redirecting to {target}", flush=True)
         # Use JS redirect so Moodle's iframe navigates correctly even if
         # the platform strips Location headers on cross-origin responses.
@@ -258,7 +339,10 @@ def launch():
     )
     workbook_url = custom_params.get('workbook_url', '')
     if not workbook_url or workbook_url.startswith('$'):
-        workbook_url = os.environ.get('DEFAULT_WORKBOOK_URL', 'https://sle-lti-server-950105557003.us-central1.run.app/no-assignment/')
+        workbook_url = os.environ.get(
+            'DEFAULT_WORKBOOK_URL',
+            'https://sle-lti-server-950105557003.us-central1.run.app/no-assignment/'
+        )
 
     attempt_id = str(uuid.uuid4())
     token_payload = {
@@ -269,7 +353,12 @@ def launch():
     }
     token = jwt.encode(token_payload, app.secret_key, algorithm='HS256')
 
-    attempts[attempt_id] = {
+    base_url = os.environ.get(
+        'SERVER_BASE_URL',
+        'https://sle-lti-server-950105557003.us-central1.run.app'
+    )
+
+    attempt_data = {
         'attempt_id': attempt_id,
         'user_sub': user_sub,
         'context_id': context_id,
@@ -282,9 +371,14 @@ def launch():
         'score': None,
         'max_score': None
     }
+    save_attempt(attempt_id, attempt_data)
 
     separator = '&' if '?' in workbook_url else '?'
-    redirect_url = f"{workbook_url}{separator}attempt_id={attempt_id}&token={token}"
+    redirect_url = (
+        f"{workbook_url}{separator}"
+        f"attempt_id={attempt_id}&token={token}"
+        f"&grade_submit_url={base_url}/api/grade"
+    )
     return redirect(redirect_url)
 
 @app.route('/deeplink/submit', methods=['POST'])
@@ -316,9 +410,25 @@ def deeplink_submit():
             label = a.get('label', '')
             nums_str = ', '.join(str(n) for n in nums)
             title = f"L01 {label} — Exercise{'s' if len(nums) != 1 else ''} {nums_str}"
+
+            # Resolve workbook URL from catalog using catalog_version_id.
+            # The client sends catalog_version_id; the server looks up the
+            # canonical URL — the client never controls where assignments point.
+            catalog_version_id = a.get('catalog_version_id', '')
+            catalog_entry = CATALOG.get(catalog_version_id)
+            if catalog_entry:
+                workbook_url = catalog_entry['workbook_url']
+                print(f"[deeplink/submit] catalog hit: {catalog_version_id} → {workbook_url}", flush=True)
+            else:
+                # Fall back to client-supplied URL if catalog has no entry.
+                # Log a warning so missing catalog entries are visible in Cloud Run logs.
+                workbook_url = a.get('workbook_url', '')
+                print(f"[deeplink/submit] WARNING: catalog_version_id '{catalog_version_id}' not found, "
+                      f"using client workbook_url='{workbook_url}'", flush=True)
+
             resource = DeepLinkResource()
             resource.set_url(lti_launch_url)
-            resource.set_custom_params({'workbook_url': a['workbook_url']})
+            resource.set_custom_params({'workbook_url': workbook_url})
             resource.set_title(title)
             from pylti1p3.lineitem import LineItem
             lineitem = LineItem()
@@ -456,9 +566,16 @@ def no_assignment():
 def health():
     if STARTUP_ERROR:
         return jsonify({"status": "error", "startup_error": STARTUP_ERROR}), 500
-    return jsonify({"status": "ok", "service": "SLE LTI 1.3", "version": "1.0.0"})
+    fs_status = "unavailable" if _fs_error else ("ready" if _fs_client else "not_initialized")
+    return jsonify({
+        "status": "ok",
+        "service": "SLE LTI 1.3",
+        "version": "1.1.0",
+        "firestore": fs_status,
+        "catalog_entries": len(CATALOG)
+    })
 
-# ── SLE API ────────────────────────────────────────────────────────────
+# ── SLE API ──────────────────────────────────────────────────────────────
 
 @app.route('/api/grade', methods=['POST'])
 def receive_grade():
@@ -475,7 +592,7 @@ def receive_grade():
     if not all([attempt_id, token, score is not None, max_score]):
         return jsonify({"error": "Missing required fields"}), 400
 
-    attempt = attempts.get(attempt_id)
+    attempt = get_attempt(attempt_id)
     if not attempt:
         return jsonify({"error": "Invalid attempt_id"}), 404
 
@@ -491,9 +608,7 @@ def receive_grade():
     if attempt.get('used'):
         return jsonify({"error": "Token already used"}), 409
 
-    attempts[attempt_id]['used'] = True
-    attempts[attempt_id]['score'] = score
-    attempts[attempt_id]['max_score'] = max_score
+    mark_attempt_used(attempt_id, score, max_score)
 
     lineitem_url = attempt.get('lineitem_url')
     print(f"[grade] attempt_id={attempt_id} score={score}/{max_score} lineitem_url={lineitem_url}", flush=True)
@@ -538,9 +653,13 @@ def api_health():
             "startup_error": STARTUP_ERROR,
             "timestamp": datetime.utcnow().isoformat()
         }), 500
+    fs_status = "unavailable" if _fs_error else ("ready" if _fs_client else "not_initialized")
     return jsonify({
         "status": "ok",
-        "attempts_in_memory": len(attempts),
+        "firestore": fs_status,
+        "firestore_error": _fs_error,
+        "attempts_in_memory_fallback": len(_mem_attempts),
+        "catalog_entries": len(CATALOG),
         "timestamp": datetime.utcnow().isoformat()
     })
 

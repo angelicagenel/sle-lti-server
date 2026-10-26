@@ -6,3 +6,4 @@ gunicorn==22.0.0
 flask-caching==2.3.0
 requests==2.32.3
 flask-cors==4.0.1
+google-cloud-firestore==2.16.1
